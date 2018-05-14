@@ -82,6 +82,15 @@ if (APPLE OR UNIX OR (MSVC AND (${BONZOMATIC_WINDOWS_FLAVOR} MATCHES "GLFW")))
   set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} glfw ${GLFW_LIBRARIES})
 
   ##############################################################################
+  # FFTW
+  set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} fftw3)
+
+  ##############################################################################
+  # PulseAudio
+  set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} pulse pulse-simple)
+
+
+  ##############################################################################
   # GLEW
   set(GLEW_SRCS
   ${CMAKE_SOURCE_DIR}/external/glew/glew.c
@@ -104,25 +113,6 @@ endif ()
 set(BZC_PROJECT_INCLUDES ${BZC_PROJECT_INCLUDES}
   ${CMAKE_SOURCE_DIR}/external/stb
 )
-
-##############################################################################
-# BASS
-set(BZC_PROJECT_INCLUDES ${BZC_PROJECT_INCLUDES} ${CMAKE_SOURCE_DIR}/external/bass)
-if (APPLE)
-  set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} ${CMAKE_SOURCE_DIR}/external/bass/libbass.dylib)
-elseif (UNIX)
-  if (BONZOMATIC_64BIT)
-    set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} ${CMAKE_SOURCE_DIR}/external/bass/x64/libbass.so)
-  else ()
-    set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} ${CMAKE_SOURCE_DIR}/external/bass/x86/libbass.so)
-  endif ()
-elseif (MSVC)
-  if (BONZOMATIC_64BIT)
-    set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} ${CMAKE_SOURCE_DIR}/external/bass/x64/bass.lib)
-  else ()
-    set(BZC_PROJECT_LIBS ${BZC_PROJECT_LIBS} ${CMAKE_SOURCE_DIR}/external/bass/x86/bass.lib)
-  endif ()
-endif ()
 
 ##############################################################################
 # JSONXX

@@ -88,6 +88,7 @@ https://github.com/Gargaj/Bonzomatic/wiki/How-to-set-up-a-Live-Coding-compo
 - GLFW by whoever made GLFW (http://www.glfw.org/faq.html)
 - JSON++ by Hong Jiang (https://github.com/hjiang/jsonxx)
 - NDI(tm) SDK by NewTek(tm) (http://www.newtek.com/ndi.html)
+- pa_fft by atomnuker (https://github.com/atomnuker/pa_fft)
 
 These software are available under their respective licenses.
 
