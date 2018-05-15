@@ -4,5 +4,6 @@ namespace FFT
 {
   bool Open();
   bool GetFFT( float * samples );
+	float GetBeat();
   void Close();
 }

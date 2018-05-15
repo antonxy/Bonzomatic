@@ -471,6 +471,9 @@ int main(int argc, char *argv[])
       Renderer::UpdateR32Texture( texFFTIntegrated, fftDataIntegrated );
     }
 
+		float beat = FFT::GetBeat();
+    Renderer::SetShaderConstant( "beat", beat);
+
     Renderer::SetShaderTexture( "texFFT", texFFT );
     Renderer::SetShaderTexture( "texFFTSmoothed", texFFTSmoothed );
     Renderer::SetShaderTexture( "texFFTIntegrated", texFFTIntegrated );

@@ -19,6 +19,8 @@
 
 #include <fftw3.h>
 
+#include <deque>
+
 namespace FFT
 {
 /*
@@ -78,6 +80,10 @@ struct pa_fft {
     unsigned int fft_memb;
     double fft_fund_freq;
     fftw_plan plan;
+
+		/* Beat detection */
+		std::deque<double> energies;
+		double beat;
 };
 
 void deinit_fft(struct pa_fft *pa_fft) {
@@ -205,38 +211,63 @@ void *pa_fft_thread(void *arg) {
             continue;
         }
 
+				double energy = 0;
+				for (size_t i = 0; i < t->buffer_samples; ++i) {
+					double val = t->pa_buf[i];
+					energy += val * val;
+				}
+				t->energies.push_back(energy);
+				while (t->energies.size() > 40) {
+					t->energies.pop_front();
+				}
+
+				//double avg_energy = 0;
+				//for (double en : t->energies) {
+				//	avg_energy += en;
+				//}
+				//avg_energy /= t->energies.size();
+
+				//double energy_var = 0;
+				//for (double en : t->energies) {
+				//	float v = avg_energy - en;
+				//	energy_var += v * v;
+				//}
+				//energy_var /= t->energies.size();
+
+
         apply_win(t->buffer, t->pa_buf, weights, t->buffer_samples);
         fftw_execute(t->plan);
 
-        double freq_low, freq_disp, freq_range, freq_off, mag_max = 0.0f;
-        if (t->log_graph) {
-            freq_low = log10((t->start_low*t->fft_fund_freq)/((float)t->ss.rate/2));
-            freq_disp = 1.0 - log10((t->fft_memb*t->fft_fund_freq)/((float)t->ss.rate/2));
-            freq_range = (1.0 - freq_disp) - freq_low;
-            freq_off = 0.0f;
-        } else {
-            freq_low = (t->start_low*t->fft_fund_freq)/((float)t->ss.rate/2);
-            freq_disp = 1.0 - (t->fft_memb*t->fft_fund_freq)/((float)t->ss.rate/2);
-            freq_range = (1.0 - freq_disp) - freq_low;
-            freq_off = 1.0f;
-        }
-        for (int i = t->start_low; i < t->fft_memb; i++) {
-            std::complex<double> num = *(reinterpret_cast<std::complex<double>*>(&t->output[i]));
-            double mag = std::real(num)*std::real(num) + std::imag(num)*std::imag(num);
-            mag = log10(mag)/10;
-            mag = frame_average(mag, t->frame_avg_mag[i], t->frame_avg, 1);
-            mag_max = mag > mag_max ? mag : mag_max;
-        }
+
+				double avg_energy = 0;
+				int lower_cut = 10;
+				int upper_cut = 1;
+				int start_low = t->fft_memb - (t->fft_memb - t->start_low) / lower_cut;
+				int end_high = t->fft_memb / upper_cut;
+				for (int i = start_low; i < end_high; i++) {
+					std::complex<double> num = *(reinterpret_cast<std::complex<double>*>(&t->output[i]));
+					double mag = std::real(num)*std::real(num) + std::imag(num)*std::imag(num);
+					avg_energy += mag;
+				}
+				avg_energy /= end_high  - start_low;
+
+				double energy_var = 0;
+				for (int i = start_low; i < end_high; i++) {
+					std::complex<double> num = *(reinterpret_cast<std::complex<double>*>(&t->output[i]));
+					double mag = std::real(num)*std::real(num) + std::imag(num)*std::imag(num);
+					double v = avg_energy - mag;
+					energy_var += v * v;
+				}
+				energy_var /= end_high - start_low;
+
+				double c = -0.0000015*energy_var+1.5142857;
+				t->beat = energy - c * avg_energy;
+
 
         if ((float)lag/1000000 >= 1.0f)
             fprintf(stderr, "Audio lagging\n");
         for (int i = t->start_low; i < t->fft_memb; i++) {
-            double freq;
             std::complex<double> num = *(reinterpret_cast<std::complex<double>*>(&t->output[i]));
-            if (t->log_graph)
-                freq = log10((i*t->fft_fund_freq)/((float)t->ss.rate/2));
-            else
-                freq = (i*t->fft_fund_freq)/((float)t->ss.rate/2);
             double mag = std::real(num)*std::real(num) + std::imag(num)*std::imag(num);
             mag = log10(mag)/10;
             mag = frame_average(mag, t->frame_avg_mag[i], t->frame_avg, 0);
@@ -306,7 +337,7 @@ static inline void init_fft(struct pa_fft *pa_fft) {
   pa_fft * ctx = NULL;
   bool Open()
   {
-    ctx = (pa_fft*)calloc(1, sizeof(struct pa_fft));
+    ctx = new pa_fft;
     ctx->cont = 1;
 
     ctx->buffer_samples = FFT_SIZE*2;
@@ -347,8 +378,14 @@ static inline void init_fft(struct pa_fft *pa_fft) {
 
     return true;
   }
+	float GetBeat() {
+    if (!ctx->cont)
+      return 0.0;
+		return ctx->beat;
+	}
   void Close()
   {
     ctx->cont = 0;
+		delete ctx;
   }
 }
